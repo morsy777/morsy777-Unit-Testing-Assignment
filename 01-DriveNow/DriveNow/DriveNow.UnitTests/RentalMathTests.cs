@@ -19,12 +19,13 @@ public class RentalMathTests
 
     public static TheoryData<DateTime, DateTime, int> RentalDates => new()
     {
-        { new DateTime(2024, 2, 1), new DateTime(2024, 2, 10), 9 },
-    };
+        { new DateTime(2024, 2, 1, 0, 0, 0), new DateTime(2024, 2, 2, 0, 0, 0), 1 },
+        { new DateTime(2024, 2, 1, 0, 0, 0), new DateTime(2024, 2, 2, 0, 59, 0), 1 },
+        { new DateTime(2024, 2, 1, 0, 0, 0), new DateTime(2024, 2, 2, 1, 0, 0), 1 },
+        { new DateTime(2024, 2, 1, 0, 0, 0), new DateTime(2024, 2, 2, 1, 1, 0), 2 },
+        { new DateTime(2024, 2, 1, 0, 0, 0), new DateTime(2024, 2, 3, 0, 0, 0), 2 },
 
-    public static TheoryData<DateTime, DateTime, int> Before60minRentalDates => new()
-    {
-        { new DateTime(2024, 2, 1, 0, 0, 0), new DateTime(2024, 2, 1, 1, 0, 0), 1 },
+        { new DateTime(2024, 2, 1), new DateTime(2024, 2, 10), 9 },
     };
 
     public static TheoryData<DateTime, DateTime> InValidRentalDates => new()
@@ -55,18 +56,8 @@ public class RentalMathTests
     }
 
     [Theory]
-    [MemberData(nameof(Before60minRentalDates))]
-    public void CalculateRentalDays_Befor60min_ReturnsOneDay(DateTime pickup, DateTime returnAt, int expected)
-    {
-        // arange + act
-        var days = RentalMath.CalculateRentalDays(pickup, returnAt);
-
-        Assert.Equal(expected, days);
-    }
-
-    [Theory]
     [MemberData(nameof(RentalDates))]
-    public void CalculateRentalDays_NormalCase_ReturnsReminderDays(DateTime pickup, DateTime returnAt, int expected)
+    public void CalculateRentalDays_MoreThan60min_ReturnsOneDays(DateTime pickup, DateTime returnAt, int expected)
     {
         // arange + act
         var days = RentalMath.CalculateRentalDays(pickup, returnAt);
