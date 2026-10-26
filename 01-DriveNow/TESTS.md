@@ -5,8 +5,10 @@
 | Business Rule                    | Test Name(s)       | Status  |
 | -------------------------------- | ------------------ | ------- |
 | BR-01 | `CalculateAge_BeforeBirthday_ReturnsAgeMinusOne` | Covered |
-| BR-02 | `Actual_Test_Name` | Covered |
-| BR-03 | None               | Gap     |
+| BR-02 | `CalculateLicenseYears_OnBirthday_ReturnsCorrectYears` | Covered |
+| BR-03 | `CalculateRentalDays_Befor60min_ReturnsOneDay` | Covered |
+| BR-03 | `CalculateRentalDays_NormalCase_ReturnsReminderDays` | Covered |
+| BR-03 | `CalculateRentalDays_ReturnAtBeforePickup_ThrowsArgumentException` | Covered |
 
 Every identified business rule is mapped to the test cases that verify it. Any rule without a test is explicitly marked as a gap.
 
