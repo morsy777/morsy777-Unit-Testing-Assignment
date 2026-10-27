@@ -22,17 +22,17 @@ public class BookingService
 
     public Booking CreateBooking(BookingRequest request)
     {
-        var customer = RequireCustomer(request.CustomerId);
-        var age = RentalMath.CalculateAge(customer.DateOfBirth, request.PickupAt);
-        var licenseYears = RentalMath.CalculateLicenseYears(customer.LicenseIssueDate, request.PickupAt);
-        RejectCustomer(customer, age, licenseYears);
+        var customer = RequireCustomer(request.CustomerId); 
+        var age = RentalMath.CalculateAge(customer.DateOfBirth, request.PickupAt); 
+        var licenseYears = RentalMath.CalculateLicenseYears(customer.LicenseIssueDate, request.PickupAt); 
+        RejectCustomer(customer, age, licenseYears); 
 
-        var vehicle = _vehicles.GetById(request.VehicleId)
-            ?? throw new VehicleNotFoundException($"Vehicle #{request.VehicleId} not found");
-        RejectVehicle(vehicle, age, licenseYears, request);
+        var vehicle = _vehicles.GetById(request.VehicleId) 
+            ?? throw new VehicleNotFoundException($"Vehicle #{request.VehicleId} not found"); 
+        RejectVehicle(vehicle, age, licenseYears, request); 
 
-        if (request.AdditionalDrivers is < 0 or > 3)
-            throw new BookingRejectedException("Up to 3 additional drivers allowed");
+        if (request.AdditionalDrivers is < 0 or > 3) 
+            throw new BookingRejectedException("Up to 3 additional drivers allowed"); 
 
         if (_bookings.GetOpenBookingsForVehicle(vehicle.Id).Any(existing =>
                 request.PickupAt <= existing.ReturnAt && request.ReturnAt >= existing.PickupAt))
