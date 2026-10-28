@@ -1,6 +1,7 @@
 ﻿using NetArchTest.Rules;
 using Shouldly;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace DriveNow.ArchitectureTests;
 
@@ -29,5 +30,21 @@ public class TestNamingTests
         //result.IsSuccessful.ShouldBeTrue(message);
 
         result.IsSuccessful.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void TestMethods_ShouldMatchNamingPattern()
+    {
+        var assembly = Assembly.Load(ProjectNames.UintTestProjectName);
+
+        foreach (var type in assembly.GetTypes())
+        {
+            foreach (var method in type.GetMethods())
+            {
+                bool matchesPattern = Regex.IsMatch(method.Name, @"^[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z0-9]+$");
+
+                matchesPattern.ShouldBeTrue($"{type.Name}.{method.Name} does not match the naming pattern.");
+            }
+        }
     }
 }
