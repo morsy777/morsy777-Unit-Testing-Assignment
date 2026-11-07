@@ -8,9 +8,10 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class PricingService
+public class PricingService(TimeProvider timeProvider, IPromoCodeRepository promoCodeRepository) 
 {
-    readonly PromoCodeRepository _promos = new();
+    readonly IPromoCodeRepository _promos = promoCodeRepository;
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     public PriceBreakdown Calculate(Customer customer, Vehicle vehicle, BookingRequest request)
     {
@@ -75,7 +76,10 @@ public class PricingService
             ?? throw new InvalidPromoCodeException($"Promo code '{code}' does not exist");
 
         // TODO: hiddent input
-        if (DateTime.Today < promo.ValidFrom || DateTime.Today > promo.ValidUntil)
+        //if (DateTime.Today < promo.ValidFrom || DateTime.Today > promo.ValidUntil)
+        //    throw new InvalidPromoCodeException($"Promo code '{code}' has expired");
+
+        if (_timeProvider.GetLocalNow().Date < promo.ValidFrom || _timeProvider.GetLocalNow().Date > promo.ValidUntil)
             throw new InvalidPromoCodeException($"Promo code '{code}' has expired");
 
         if (days < promo.MinDays)

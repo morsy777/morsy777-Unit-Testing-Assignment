@@ -3,7 +3,7 @@ using DriveNow.Infrastructure.Persistence;
 
 namespace DriveNow.Infrastructure.Repositories;
 
-public class PromoCodeRepository
+public class PromoCodeRepository : IPromoCodeRepository
 {
     public PromoCode? GetByCode(string code) =>
         InMemoryDatabase.PromoCodes.FirstOrDefault(promo =>

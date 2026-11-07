@@ -9,13 +9,13 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class BookingService(TimeProvider timeProvider)
+public class BookingService(TimeProvider timeProvider, IPromoCodeRepository promoRepository)
 {
     readonly CustomerRepo _customers = new();
     readonly VehicleRepository _vehicles = new();
     readonly BookingRepository _bookings = new();
-    readonly PromoCodeRepository _promos = new();
-    readonly PricingService _pricing = new();
+    readonly IPromoCodeRepository _promos = promoRepository;
+    readonly PricingService _pricing = new(timeProvider, promoRepository);
     readonly PaymentGateway _payments = new();
     readonly SmsSender _sms = new();
     readonly EmailSender _email = new();
