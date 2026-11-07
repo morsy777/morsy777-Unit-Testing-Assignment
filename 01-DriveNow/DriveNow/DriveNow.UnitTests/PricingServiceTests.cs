@@ -5,6 +5,7 @@ using DriveNow.Domain.Enums;
 using DriveNow.Domain.Services;
 using DriveNow.Infrastructure.Repositories;
 using DriveNow.UnitTests.Fakers;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Shouldly;
 using System;
@@ -132,9 +133,47 @@ public class PricingServiceTests
         result.DurationDiscount.ShouldBe(expectedDurationDiscount); // 10% of 8000 (8 days * 1000)
     }
 
-    private static PricingService CreatePricingService()
+    [Theory]
+    [InlineData(LoyaltyTier.None, 0)]
+    [InlineData(LoyaltyTier.Silver, 50)]
+    [InlineData(LoyaltyTier.Gold, 100)]
+    [InlineData(LoyaltyTier.Platinum, 150)]
+    public void Calculate_DiscountPercentageShouldApplyCorrectPercentage_WhenCustomerHasLoyaltyTier(LoyaltyTier tier, decimal expectedDiscount)
     {
-        var timeProvider = TimeProvider.System;
+        // arrange
+        var pickup = new DateTime(2026, 11, 5, 10, 0, 0);
+        var customer = new CustomerFaker()
+            .WithTier(tier)
+            .Generate();
+
+        var vehicle = new VehicleFaker()
+            .WithDailyRate(1000m)
+            .Generate();
+
+        var request = new BookingRequest
+        {
+            CustomerId = customer.Id,
+            VehicleId = vehicle.Id,
+            PickupAt = pickup,
+            ReturnAt = pickup.AddDays(1),
+            InsurancePlan = default,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var sut = CreatePricingService();
+
+        // Act
+        var result = sut.Calculate(customer, vehicle, request);
+
+        // Assert
+        result.LoyaltyDiscount.ShouldBe(expectedDiscount); // 5% Silver, 10% Gold, 15% Platinum of Base(1000)
+    }
+
+    private static PricingService CreatePricingService(DateTimeOffset? currentTime = null)
+    {
+        var timeProvider = new FakeTimeProvider(currentTime ??
+            new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
 
         var promoCodeRepository = new Mock<IPromoCodeRepository>();
 
