@@ -84,8 +84,11 @@ public class BookingService
     {
         var booking = _bookings.GetById(bookingId)
             ?? throw new BookingNotFoundException($"Booking #{bookingId} not found");
+
         if (booking.Status != BookingStatus.Reserved)
             throw new InvalidBookingStateException("Only reserved bookings can be started");
+
+        // TODO: hiddent input
         if (DateTime.Now < booking.PickupAt.AddHours(-1))
             throw new InvalidBookingStateException("Too early to start this rental");
 
@@ -122,6 +125,7 @@ public class BookingService
         if (vehicle.Category == VehicleCategory.Van && licenseYears < 2)
             throw new BookingRejectedException("Vans require 2 years of license");
 
+        // TODO: hiddent input
         if (request.PickupAt < DateTime.Now.AddHours(2))
             throw new BookingRejectedException("Pickup must be at least 2 hours from now");
 
@@ -147,6 +151,7 @@ public class BookingService
         return deposit;
     }
 
+    // TODO: hiddent input
     static string RandomCode()
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

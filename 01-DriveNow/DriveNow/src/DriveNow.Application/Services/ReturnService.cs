@@ -22,6 +22,7 @@ public class ReturnService
     {
         var booking = _bookings.GetById(bookingId)
             ?? throw new BookingNotFoundException($"Booking #{bookingId} not found");
+
         if (booking.Status != BookingStatus.Active)
             throw new InvalidBookingStateException("Only active bookings can be returned");
         if (endMileage < booking.StartMileage)
@@ -31,9 +32,11 @@ public class ReturnService
 
         var vehicle = _vehicles.GetById(booking.VehicleId)
             ?? throw new VehicleNotFoundException($"Vehicle #{booking.VehicleId} not found");
+
         var customer = _customers.GetById(booking.CustomerId)
             ?? throw new CustomerNotFoundException($"Customer #{booking.CustomerId} not found");
 
+        // TODO: hiddent input
         var now = DateTime.Now;
         var report = BuildReport(booking, vehicle, endMileage, fuelQuarters, damageCost, now);
 
@@ -60,6 +63,7 @@ public class ReturnService
             new TaxCalculator(),
             new CurrencyFormatter(),
             new ReceiptFormatter()).Build(booking, report);
+
         _email.Send(customer.Email, $"Receipt {booking.Reference}", receipt);
         AuditLog.Write($"Booking {booking.Reference} returned");
         return report;

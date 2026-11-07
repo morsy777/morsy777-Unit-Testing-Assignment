@@ -20,16 +20,21 @@ public class CancellationService
     {
         var booking = _bookings.GetById(bookingId)
             ?? throw new BookingNotFoundException($"Booking #{bookingId} not found");
+
         if (booking.Status != BookingStatus.Reserved)
             throw new InvalidBookingStateException("Only reserved bookings can be cancelled");
+
+        // TODO: hiddent input
         if (DateTime.Now >= booking.PickupAt)
             throw new InvalidBookingStateException("Booking has already started");
 
         var vehicle = _vehicles.GetById(booking.VehicleId)
             ?? throw new VehicleNotFoundException($"Vehicle #{booking.VehicleId} not found");
+
         var customer = _customers.GetById(booking.CustomerId)
             ?? throw new CustomerNotFoundException($"Customer #{booking.CustomerId} not found");
 
+        // TODO: hiddent input
         var hours = (booking.PickupAt - DateTime.Now).TotalHours;
         var fee = 0m;
         if (customer.LoyaltyTier != LoyaltyTier.Platinum)

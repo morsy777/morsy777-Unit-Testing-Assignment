@@ -74,6 +74,7 @@ public class PricingService
         var promo = _promos.GetByCode(code)
             ?? throw new InvalidPromoCodeException($"Promo code '{code}' does not exist");
 
+        // TODO: hiddent input
         if (DateTime.Today < promo.ValidFrom || DateTime.Today > promo.ValidUntil)
             throw new InvalidPromoCodeException($"Promo code '{code}' has expired");
 
