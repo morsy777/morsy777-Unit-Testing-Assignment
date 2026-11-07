@@ -51,7 +51,7 @@ public class PricingServiceTests
         // Assert
         result.WeekendSurcharge.ShouldBe(expectedSurcharge);
     }
-    
+
     [Theory]
     [InlineData(20, 0)]
     [InlineData(21, 150)]
@@ -92,6 +92,44 @@ public class PricingServiceTests
         RentalMath.CalculateAge(customer.DateOfBirth, pickup).ShouldBe(age);
 
         result.YoungDriverSurcharge.ShouldBe(expectedYoungDriverSurcharge); // 15% of 1000
+    }
+
+    [Theory]
+    [InlineData(7, 0)]
+    [InlineData(13, 1300)]
+    [InlineData(14, 2100)]
+    public void Calculate_DurationDiscountShouldApply10Percent_WhenRentalDurationIsBetween7And13Days(int days, decimal expectedDurationDiscount)
+    {
+        // arrange
+        var pickup = new DateTime(2026, 11, 5, 10, 0, 0);
+        var customer = new CustomerFaker()
+            //.WithAge(30, pickup)
+            .Generate();
+
+        var vehicle = new VehicleFaker()
+            .WithDailyRate(1000m)
+            .Generate();
+
+        var request = new BookingRequest
+        {
+            CustomerId = customer.Id,
+            VehicleId = vehicle.Id,
+            PickupAt = pickup,
+            ReturnAt = pickup.AddDays(days),
+            InsurancePlan = default,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var sut = CreatePricingService();
+
+        // Act
+        var result = sut.Calculate(customer, vehicle, request);
+
+        // Assert
+        RentalMath.CalculateRentalDays(request.PickupAt, request.ReturnAt).ShouldBe(days);
+
+        result.DurationDiscount.ShouldBe(expectedDurationDiscount); // 10% of 8000 (8 days * 1000)
     }
 
     private static PricingService CreatePricingService()
