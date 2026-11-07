@@ -9,7 +9,7 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class BookingService
+public class BookingService(TimeProvider timeProvider)
 {
     readonly CustomerRepo _customers = new();
     readonly VehicleRepository _vehicles = new();
@@ -19,6 +19,7 @@ public class BookingService
     readonly PaymentGateway _payments = new();
     readonly SmsSender _sms = new();
     readonly EmailSender _email = new();
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     public Booking CreateBooking(BookingRequest request)
     {
@@ -89,7 +90,10 @@ public class BookingService
             throw new InvalidBookingStateException("Only reserved bookings can be started");
 
         // TODO: hiddent input
-        if (DateTime.Now < booking.PickupAt.AddHours(-1))
+        //if (DateTime.Now < booking.PickupAt.AddHours(-1))
+        //    throw new InvalidBookingStateException("Too early to start this rental");
+
+        if (_timeProvider.GetLocalNow() < booking.PickupAt.AddHours(-1))
             throw new InvalidBookingStateException("Too early to start this rental");
 
         booking.Status = BookingStatus.Active;
@@ -114,7 +118,7 @@ public class BookingService
             throw new BookingRejectedException("License must be held for at least 1 year");
     }
 
-    static void RejectVehicle(Vehicle vehicle, int age, int licenseYears, BookingRequest request)
+    void RejectVehicle(Vehicle vehicle, int age, int licenseYears, BookingRequest request)
     {
         if (!vehicle.IsAvailable)
             throw new BookingRejectedException("Vehicle is not available");
@@ -126,7 +130,10 @@ public class BookingService
             throw new BookingRejectedException("Vans require 2 years of license");
 
         // TODO: hiddent input
-        if (request.PickupAt < DateTime.Now.AddHours(2))
+        //if (request.PickupAt < DateTime.Now.AddHours(2))
+        //    throw new BookingRejectedException("Pickup must be at least 2 hours from now");
+
+        if (request.PickupAt < _timeProvider.GetLocalNow().AddHours(2))
             throw new BookingRejectedException("Pickup must be at least 2 hours from now");
 
         if (request.ReturnAt <= request.PickupAt || request.ReturnAt - request.PickupAt > TimeSpan.FromDays(30))
@@ -152,6 +159,7 @@ public class BookingService
     }
 
     // TODO: hiddent input
+    // Test the no. of digits
     static string RandomCode()
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

@@ -10,13 +10,14 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class ReturnService
+public class ReturnService(TimeProvider timeProvider)
 {
     readonly BookingRepository _bookings = new();
     readonly VehicleRepository _vehicles = new();
     readonly CustomerRepo _customers = new();
     readonly PaymentGateway _payments = new();
     readonly EmailSender _email = new();
+    private readonly TimeProvider _timeProvider = timeProvider;
 
     public ReturnReport ProcessReturn(int bookingId, int endMileage, int fuelQuarters, decimal damageCost)
     {
@@ -37,7 +38,9 @@ public class ReturnService
             ?? throw new CustomerNotFoundException($"Customer #{booking.CustomerId} not found");
 
         // TODO: hiddent input
-        var now = DateTime.Now;
+        //var now = DateTime.Now;
+
+        var now = _timeProvider.GetLocalNow().UtcDateTime;
         var report = BuildReport(booking, vehicle, endMileage, fuelQuarters, damageCost, now);
 
         booking.Status = BookingStatus.Completed;
