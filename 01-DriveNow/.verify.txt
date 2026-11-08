@@ -1,15 +1,51 @@
->▶ Running: DriveNow.UnitTests.PricingServiceTests.Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown
-  ✅ Passed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 1992-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = Economy, DailyRate = 600, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 0, CustomerId = 0, InsurancePlan = Standard, PickupAt = 2026-11-08T10:00:00.0000000, PromoCode = null, ··· }, expected: PriceBreakdown { AdditionalDriversCost = 0, BaseAmount = 1800, DurationDiscount = 0, InsuranceCost = 450, LoyaltyDiscount = 180, ··· }) (40ms)
-  ✅ Passed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 2003-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = SUV, DailyRate = 1500, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 1, CustomerId = 0, InsurancePlan = Premium, PickupAt = 2026-11-05T09:00:00.0000000, PromoCode = "SAVE15", ··· }, expected: PriceBreakdown { AdditionalDriversCost = 700, BaseAmount = 10500, DurationDiscount = 1050, InsuranceCost = 2100, LoyaltyDiscount = 525, ··· }) (5ms)
-  ✅ Passed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 1992-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = Economy, DailyRate = 600, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 0, CustomerId = 0, InsurancePlan = Standard, PickupAt = 2026-11-08T10:00:00.0000000, PromoCode = null, ··· }, expected: PriceBreakdown { AdditionalDriversCost = 0, BaseAmount = 1800, DurationDiscount = 0, InsuranceCost = 450, LoyaltyDiscount = 180, ··· }) (40ms)
-  ✅ Passed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 2003-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = SUV, DailyRate = 1500, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 1, CustomerId = 0, InsurancePlan = Premium, PickupAt = 2026-11-05T09:00:00.0000000, PromoCode = "SAVE15", ··· }, expected: PriceBreakdown { AdditionalDriversCost = 700, BaseAmount = 10500, DurationDiscount = 1050, InsuranceCost = 2100, LoyaltyDiscount = 525, ··· }) (5ms)
+▶ Running: DriveNow.UnitTests.PricingServiceTests.Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown
+  ✅ Passed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 1992-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = Economy, DailyRate = 600, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 0, CustomerId = 0, InsurancePlan = Standard, PickupAt = 2026-11-08T10:00:00.0000000, PromoCode = null, ··· }, expected: PriceBreakdown { AdditionalDriversCost = 0, BaseAmount = 1800, DurationDiscount = 0, InsuranceCost = 450, LoyaltyDiscount = 180, ··· }) (36ms)
+  ❌ Failed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 2003-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = SUV, DailyRate = 1500, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 1, CustomerId = 0, InsurancePlan = Premium, PickupAt = 2026-11-05T09:00:00.0000000, PromoCode = "SAVE15", ··· }, expected: PriceBreakdown { AdditionalDriversCost = 700, BaseAmount = 10500, DurationDiscount = 1050, InsuranceCost = 2100, LoyaltyDiscount = 525, ··· }) (62ms)
+    Expected property result.DurationDiscount to be 1050M, but found 0M.
+    Expected property result.PromoDiscount to be 1050M, but found 1575M.
+    Expected property result.AdditionalDriversCost to be 700M, but found 0M.
+    Expected property result.Total to be 12850M, but found 12675.00M.
+    With configuration:
+    - Use declared types and members
+    - Compare enums by value
+    - Compare tuples by their properties
+    - Compare anonymous types by their properties
+    - Compare records by their members
+    - Include non-browsable members
+    - Match member by name (or throw)
+    - Be strict about the order of items in byte arrays
+    - Without automatic conversion.
+  ❌ Failed: Calculate_WhenFullPricingScenarioProvided_ReturnsExpectedBreakdown(customer: Customer { CompletedRentals = 0, DateOfBirth = 2003-01-01T00:00:00.0000000, Email = "", FullName = "", Id = 0, ··· }, vehicle: Vehicle { Category = SUV, DailyRate = 1500, Id = 0, IsAvailable = False, Mileage = 0, ··· }, request: BookingRequest { AdditionalDrivers = 1, CustomerId = 0, InsurancePlan = Premium, PickupAt = 2026-11-05T09:00:00.0000000, PromoCode = "SAVE15", ··· }, expected: PriceBreakdown { AdditionalDriversCost = 700, BaseAmount = 10500, DurationDiscount = 1050, InsuranceCost = 2100, LoyaltyDiscount = 525, ··· }) (62ms)
+    Expected property result.DurationDiscount to be 1050M, but found 0M.
+    Expected property result.PromoDiscount to be 1050M, but found 1575M.
+    Expected property result.AdditionalDriversCost to be 700M, but found 0M.
+    Expected property result.Total to be 12850M, but found 12675.00M.
+    
+    With configuration:
+    - Use declared types and members
+    - Compare enums by value
+    - Compare tuples by their properties
+    - Compare anonymous types by their properties
+    - Compare records by their members
+    - Include non-browsable members
+    - Match member by name (or throw)
+    - Be strict about the order of items in byte arrays
+    - Without automatic conversion.
 
 
 Test Run Summary
 
-Total: 2
-✅ Passed: 2
-❌ Failed: 0
+Total: 1
+✅ Passed: 0
+❌ Failed: 1
 ⏭️  Skipped: 0
-Duration: 6.78s
-End time: 3:13:40 AM
+Duration: 2.02s
+End time: 3:20:31 AM
+
+-------------------------------------------------------------------------
+[Explaniation Why Test B Fail]
+The test failed due to three mismatches with the expected business rules:
+
+- Duration discount is not applied for exactly 7 days.
+- Promo discount is calculated without applying the maximum discount cap.
+- Silver customers get one free additional driver, while the example expects a charge of 700.
