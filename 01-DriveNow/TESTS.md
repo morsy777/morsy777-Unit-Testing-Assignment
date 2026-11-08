@@ -40,3 +40,5 @@ Only accepted AI suggestions are implemented. Accepted cases are committed separ
 
 I think these tests are enough because in BR-01 I cover day before, at the same day in the leap and regular year, and in BR-03 I cover case that the method throws, refactor CalculateRentalDays to add additional one day only if the reminder minuties i greater than 60 not just equal.
 
+## Verify: snapshot the PriceBreakdown of worked examples A and B
+> Lock at **.verify.txt** file.
