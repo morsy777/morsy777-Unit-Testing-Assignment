@@ -29,9 +29,12 @@ public sealed class VehicleFaker : Faker<Vehicle>
         return this;
     }
 
-    public VehicleFaker WithCategory(VehicleCategory category)
+    public VehicleFaker WithCategory(VehicleCategory? category)
     {
-        RuleFor(v => v.Category, _ => category);
+        if(category is null)
+            RuleFor(v => v.Category, f => f.PickRandom<VehicleCategory>());
+        else
+            RuleFor(v => v.Category, _ => category);
 
         return this;
     }

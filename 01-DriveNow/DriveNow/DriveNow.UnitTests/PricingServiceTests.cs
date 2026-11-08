@@ -2,6 +2,7 @@
 using DriveNow.Application.Services;
 using DriveNow.Domain.Entities;
 using DriveNow.Domain.Enums;
+using DriveNow.Domain.Exceptions;
 using DriveNow.Domain.Services;
 using DriveNow.Infrastructure.Repositories;
 using DriveNow.UnitTests.Fakers;
@@ -199,32 +200,69 @@ public class PricingServiceTests
 
         // Act
         var result = sut.Calculate(customer, vehicle, request);
-        
+
         // Assert
         result.PromoDiscount.ShouldBe(expectedDiscount); // 15% of Base(dailyRate)
     }
+
+    [Theory]
+    [InlineData(null, "SAVE1000")]
+    [InlineData(null, "SUMMER25")]
+    [InlineData(VehicleCategory.Economy, "LUX10")]
+    [InlineData(VehicleCategory.Luxury, "LUX10")]
+    [InlineData(VehicleCategory.Economy, "WEEKLY20")]
+    public void Calculate_ShouldThrowInvalidPromoCodeException_WhenPromoCodeIsInvalid(VehicleCategory? category, string code)
+    {
+        // arrange
+        var pickup = new DateTime(2026, 11, 5, 10, 0, 0);
+        var customer = new CustomerFaker()
+            .Generate();
+
+        var vehicle = new VehicleFaker()
+            .WithDailyRate(1000m)
+            .WithCategory(category)
+            .Generate();
+
+        var request = new BookingRequest
+        {
+            CustomerId = customer.Id,
+            VehicleId = vehicle.Id,
+            PickupAt = pickup,
+            ReturnAt = pickup.AddDays(3),
+            InsurancePlan = default,
+            AdditionalDrivers = 0,
+            PromoCode = code
+        };
+
+        var sut = CreatePricingService();
+
+        // Act & Assert
+        Should.Throw<InvalidPromoCodeException>(() => sut.Calculate(customer, vehicle, request));
+    }
+
 
     private static PricingService CreatePricingService(DateTimeOffset? currentTime = null)
     {
         var timeProvider = new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
 
-        var promoCodeRepository = new Mock<IPromoCodeRepository>();
+        var promoCodeRepository = new PromoCodeRepository(); // Use the actual repository implementation for testing
 
-        var promo = new PromoCode
-        {
-            Code = "SAVE15",
-            DiscountPercent = 15,
-            ValidFrom = DateTime.Today.AddDays(-10),
-            ValidUntil = DateTime.Today.AddDays(60),
-            MinDays = 1,
-            AllowedCategories = null,
-            MaxUses = 100,
-            UsedCount = 3
-        };
+        // If you want to mock the repository instead, you can uncomment the following lines and comment out the above line.
+        //var promoCodeRepository = new Mock<IPromoCodeRepository>();
+        //var promo = new PromoCode
+        //{
+        //    Code = "SAVE15",
+        //    DiscountPercent = 15,
+        //    ValidFrom = DateTime.Today.AddDays(-10),
+        //    ValidUntil = DateTime.Today.AddDays(60),
+        //    MinDays = 1,
+        //    AllowedCategories = null,
+        //    MaxUses = 100,
+        //    UsedCount = 3
+        //};
+        //promoCodeRepository.Setup(r => r.GetByCode("SAVE15")).Returns(promo);
 
-        promoCodeRepository.Setup(r => r.GetByCode("SAVE15")).Returns(promo);
-
-        return new PricingService(timeProvider, promoCodeRepository.Object);
+        return new PricingService(timeProvider, promoCodeRepository);
     }
 }
