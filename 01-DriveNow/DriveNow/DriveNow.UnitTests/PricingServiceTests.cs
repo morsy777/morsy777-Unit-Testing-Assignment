@@ -170,12 +170,60 @@ public class PricingServiceTests
         result.LoyaltyDiscount.ShouldBe(expectedDiscount); // 5% Silver, 10% Gold, 15% Platinum of Base(1000)
     }
 
+    [Theory]
+    [InlineData(1000, 1, 150)]
+    [InlineData(1500, 2, 450)]
+    public void Calculate_PromoCodeDiscountShouldApplyOnBaseAmount_WhenPromoCodeIsValid(decimal dailyRate, int days, decimal expectedDiscount)
+    {
+        // arrange
+        var pickup = new DateTime(2026, 11, 5, 10, 0, 0);
+        var customer = new CustomerFaker()
+            .Generate();
+
+        var vehicle = new VehicleFaker()
+            .WithDailyRate(dailyRate)
+            .Generate();
+
+        var request = new BookingRequest
+        {
+            CustomerId = customer.Id,
+            VehicleId = vehicle.Id,
+            PickupAt = pickup,
+            ReturnAt = pickup.AddDays(days),
+            InsurancePlan = default,
+            AdditionalDrivers = 0,
+            PromoCode = "SAVE15"
+        };
+
+        var sut = CreatePricingService();
+
+        // Act
+        var result = sut.Calculate(customer, vehicle, request);
+        
+        // Assert
+        result.PromoDiscount.ShouldBe(expectedDiscount); // 15% of Base(dailyRate)
+    }
+
     private static PricingService CreatePricingService(DateTimeOffset? currentTime = null)
     {
         var timeProvider = new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
 
         var promoCodeRepository = new Mock<IPromoCodeRepository>();
+
+        var promo = new PromoCode
+        {
+            Code = "SAVE15",
+            DiscountPercent = 15,
+            ValidFrom = DateTime.Today.AddDays(-10),
+            ValidUntil = DateTime.Today.AddDays(60),
+            MinDays = 1,
+            AllowedCategories = null,
+            MaxUses = 100,
+            UsedCount = 3
+        };
+
+        promoCodeRepository.Setup(r => r.GetByCode("SAVE15")).Returns(promo);
 
         return new PricingService(timeProvider, promoCodeRepository.Object);
     }
