@@ -72,6 +72,43 @@ public class BookingServiceTests
         ex.Message.ShouldBe("Customer is blacklisted");
     }
 
+    [Fact]
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenCustomerAgeUnder21()
+    {
+        // Arrange
+        var request = new BookingRequest
+        {
+            CustomerId = 2, // This customer is under 21 in the stub
+            VehicleId = 1,
+            PickupAt = new DateTime(2026, 11, 8, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 10, 10, 0, 0),
+            InsurancePlan = InsurancePlan.Basic,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var underageCustomer = new Customer
+        {
+            Id = 2,
+            FullName = "Zeyad Ahmed",
+            DateOfBirth = new DateTime(2006, 1, 1), // Under 21 years old
+            LicenseIssueDate = new DateTime(2024, 1, 1),
+            IsBlacklisted = false
+        };
+
+        var customerRepo = new Mock<ICustomerRepo>();
+
+        customerRepo
+            .Setup(repo => repo.GetById(2))
+            .Returns(underageCustomer);
+
+        var bookingService = CreateBookingService(customerRepository: customerRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+        ex.Message.ShouldBe("Driver must be at least 21");
+    }
+
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null, ICustomerRepo? customerRepository = null)
     {
         var timeProvider = new FakeTimeProvider(currentTime ??
