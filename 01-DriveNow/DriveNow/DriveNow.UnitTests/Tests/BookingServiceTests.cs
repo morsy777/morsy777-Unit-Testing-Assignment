@@ -173,7 +173,7 @@ public class BookingServiceTests
     }
 
     [Fact]
-    public void CreateBooking_ShouldThrowVehicleNotFoundException_WhenVehicleNotAvailable()
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenVehicleNotAvailable()
     {
         // Arrange
         var request = new BookingRequest
@@ -216,6 +216,8 @@ public class BookingServiceTests
         var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
         ex.Message.ShouldBe("Vehicle is not available");
     }
+
+
 
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
