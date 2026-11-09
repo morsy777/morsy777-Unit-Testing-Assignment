@@ -1,7 +1,7 @@
 ﻿using DriveNow.Domain.Services;
 using FluentAssertions;
 
-namespace DriveNow.UnitTests;
+namespace DriveNow.UnitTests.Tests;
 
 public class RentalMathTests
 {

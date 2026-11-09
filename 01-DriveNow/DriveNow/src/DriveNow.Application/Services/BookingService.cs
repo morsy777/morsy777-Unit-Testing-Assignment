@@ -9,9 +9,9 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class BookingService(TimeProvider timeProvider, IPromoCodeRepository promoRepository)
+public class BookingService(TimeProvider timeProvider, IPromoCodeRepository promoRepository, ICustomerRepo customerRepo)
 {
-    readonly CustomerRepo _customers = new();
+    readonly ICustomerRepo _customers = customerRepo;
     readonly VehicleRepository _vehicles = new();
     readonly BookingRepository _bookings = new();
     readonly IPromoCodeRepository _promos = promoRepository;

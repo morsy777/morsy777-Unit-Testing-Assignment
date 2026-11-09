@@ -15,7 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DriveNow.UnitTests;
+namespace DriveNow.UnitTests.Tests;
 
 public class PricingServiceTests
 {
