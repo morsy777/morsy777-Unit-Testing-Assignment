@@ -21,8 +21,8 @@ public class BookingServiceTests
         {
             CustomerId = 999, // Any value will return null from the stub
             VehicleId = 1,
-            PickupAt = DateTime.Today.AddDays(1),
-            ReturnAt = DateTime.Today.AddDays(3),
+            PickupAt = new DateTime(2026, 11, 8, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 10, 10, 0, 0),
             InsurancePlan = InsurancePlan.Basic,
             AdditionalDrivers = 0,
             PromoCode = null
@@ -43,8 +43,8 @@ public class BookingServiceTests
         {
             CustomerId = 1, // This customer is blacklisted in the stub
             VehicleId = 1,
-            PickupAt = DateTime.Today.AddDays(1),
-            ReturnAt = DateTime.Today.AddDays(3),
+            PickupAt = new DateTime(2026, 11, 8, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 10, 10, 0, 0),
             InsurancePlan = InsurancePlan.Basic,
             AdditionalDrivers = 0,
             PromoCode = null
@@ -53,9 +53,6 @@ public class BookingServiceTests
         var blacklistedCustomer = new Customer
         {
             Id = 1,
-            FullName = "Mohamed Morsi",
-            DateOfBirth = new DateTime(2004, 7, 1),
-            LicenseIssueDate = new DateTime(2022, 1, 1),
             IsBlacklisted = true
         };
 
@@ -90,10 +87,7 @@ public class BookingServiceTests
         var underageCustomer = new Customer
         {
             Id = 2,
-            FullName = "Zeyad Ahmed",
             DateOfBirth = new DateTime(2006, 1, 1), // Under 21 years old
-            LicenseIssueDate = new DateTime(2024, 1, 1),
-            IsBlacklisted = false
         };
 
         var customerRepo = new Mock<ICustomerRepo>();
@@ -107,6 +101,40 @@ public class BookingServiceTests
         // Act & Assert
         var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
         ex.Message.ShouldBe("Driver must be at least 21");
+    }
+
+    [Fact]
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenLicenseYearsUnder1()
+    {
+        // Arrange
+        var request = new BookingRequest
+        {
+            CustomerId = 3, // This customer has less than 1 year of license in the stub
+            VehicleId = 1,
+            PickupAt = new DateTime(2026, 11, 8, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 10, 10, 0, 0),
+            InsurancePlan = InsurancePlan.Basic,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var inexperiencedCustomer = new Customer
+        {
+            Id = 3,
+            LicenseIssueDate = new DateTime(2025, 12, 1), // Less than 1 year of license
+        };
+
+        var customerRepo = new Mock<ICustomerRepo>();
+
+        customerRepo
+            .Setup(repo => repo.GetById(3))
+            .Returns(inexperiencedCustomer);
+
+        var bookingService = CreateBookingService(customerRepository: customerRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+        ex.Message.ShouldBe("License must be held for at least 1 year");
     }
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null, ICustomerRepo? customerRepository = null)
