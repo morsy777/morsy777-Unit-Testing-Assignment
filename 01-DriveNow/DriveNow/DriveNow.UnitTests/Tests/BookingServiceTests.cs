@@ -137,7 +137,10 @@ public class BookingServiceTests
         ex.Message.ShouldBe("License must be held for at least 1 year");
     }
 
-    private static BookingService CreateBookingService(DateTimeOffset? currentTime = null, ICustomerRepo? customerRepository = null)
+
+
+    private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
+        ICustomerRepo? customerRepository = null, IVehicleRepo? vehicleRepository = null)
     {
         var timeProvider = new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
@@ -145,7 +148,8 @@ public class BookingServiceTests
         var promoCodeRepository = new PromoCodeRepository();
 
         customerRepository ??= new CustomerStub();
+        vehicleRepository ??= new VehicleStub();
 
-        return new BookingService(timeProvider, promoCodeRepository, customerRepository);
+        return new BookingService(timeProvider, promoCodeRepository, customerRepository, vehicleRepository);
     }
 }

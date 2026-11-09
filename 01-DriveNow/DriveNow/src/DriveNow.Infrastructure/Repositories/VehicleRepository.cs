@@ -3,7 +3,7 @@ using DriveNow.Infrastructure.Persistence;
 
 namespace DriveNow.Infrastructure.Repositories;
 
-public class VehicleRepository
+public class VehicleRepository : IVehicleRepo
 {
     public Vehicle? GetById(int id) =>
         InMemoryDatabase.Vehicles.FirstOrDefault(vehicle => vehicle.Id == id);
