@@ -137,6 +137,85 @@ public class BookingServiceTests
         ex.Message.ShouldBe("License must be held for at least 1 year");
     }
 
+    [Fact]
+    public void CreateBooking_ShouldThrowVehicleNotFoundException_WhenVehicleDoesNotExist()
+    {
+        // Arrange
+        var request = new BookingRequest
+        {
+            CustomerId = 4, 
+            VehicleId = 999, // Any value will return null from the stub
+            PickupAt = new DateTime(2026, 11, 8, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 10, 10, 0, 0),
+            InsurancePlan = InsurancePlan.Basic,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var validCustomer = new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1), // Over 21 years old
+            LicenseIssueDate = new DateTime(2015, 1, 1), // More than 1 year of license
+        };
+
+        var customerRepo = new Mock<ICustomerRepo>();
+
+        customerRepo
+            .Setup(repo => repo.GetById(4))
+            .Returns(validCustomer);
+
+        var bookingService = CreateBookingService(customerRepository: customerRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<VehicleNotFoundException>(() => bookingService.CreateBooking(request));
+        ex.Message.ShouldBe($"Vehicle #999 not found");
+    }
+
+    [Fact]
+    public void CreateBooking_ShouldThrowVehicleNotFoundException_WhenVehicleNotAvailable()
+    {
+        // Arrange
+        var request = new BookingRequest
+        {
+            CustomerId = 4, // This customer is valid in the stub
+            VehicleId = 2, // This vehicle is not available in the stub
+            PickupAt = new DateTime(2026, 11, 8, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 10, 10, 0, 0),
+            InsurancePlan = InsurancePlan.Basic,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var validCustomer = new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1), // Over 21 years old
+            LicenseIssueDate = new DateTime(2015, 1, 1), // More than 1 year of license
+        };
+
+        var unavailableVehicle = new Vehicle
+        {
+            Id = 2,
+            IsAvailable = false // Vehicle is not available
+        };
+
+        var customerRepo = new Mock<ICustomerRepo>();
+        var vehicleRepo = new Mock<IVehicleRepo>();
+
+        customerRepo
+            .Setup(repo => repo.GetById(4))
+            .Returns(validCustomer);
+
+        vehicleRepo
+            .Setup(repo => repo.GetById(2))
+            .Returns(unavailableVehicle);
+
+        var bookingService = CreateBookingService(customerRepository: customerRepo.Object, vehicleRepository: vehicleRepo.Object);
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+        ex.Message.ShouldBe("Vehicle is not available");
+    }
 
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
