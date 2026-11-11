@@ -7,6 +7,7 @@ using DriveNow.Application.Services;
 using DriveNow.Domain.Entities;
 using DriveNow.Domain.Enums;
 using DriveNow.Domain.Exceptions;
+using DriveNow.Infrastructure.Persistence;
 using DriveNow.Infrastructure.Repositories;
 using DriveNow.UnitTests.AutoMoq;
 using DriveNow.UnitTests.Fakers;
@@ -478,6 +479,64 @@ public class BookingServiceTests
         var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
 
         ex.Message.ShouldBe("Up to 3 additional drivers allowed");
+    }
+
+    [Fact]
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenVehicleAlreadyBookedForRequestedDates()
+    {
+        // Arrange
+        var existingBooking = new Booking
+        {
+            Id = 100,
+            CustomerId = 5,
+            VehicleId = 2,
+            PickupAt = new DateTime(2026, 11, 10, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 12, 10, 0, 0),
+            Status = BookingStatus.Reserved
+        };
+
+        InMemoryDatabase.Bookings.Add(existingBooking);
+
+        try
+        {
+            var request = new BookingRequest
+            {
+                CustomerId = 4,
+                VehicleId = 2,
+                PickupAt = new DateTime(2026, 11, 11, 10, 0, 0),
+                ReturnAt = new DateTime(2026, 11, 13, 10, 0, 0)
+            };
+
+            var customerRepo = new Mock<ICustomerRepository>();
+            var vehicleRepo = new Mock<IVehicleRepository>();
+
+            customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+            {
+                Id = 4,
+                DateOfBirth = new DateTime(2004, 7, 1),
+                LicenseIssueDate = new DateTime(2025, 1, 1)
+            });
+
+            vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+            {
+                Id = 2,
+                IsAvailable = true,
+                Category = VehicleCategory.Economy
+            });
+
+            var bookingService = CreateBookingService(
+                customerRepository: customerRepo.Object,
+                vehicleRepository: vehicleRepo.Object);
+
+            // Act & Assert
+            var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+
+            ex.Message.ShouldBe("Vehicle is already booked for these dates");
+        }
+        finally
+        {
+            InMemoryDatabase.Bookings.Remove(existingBooking);
+        }
     }
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
