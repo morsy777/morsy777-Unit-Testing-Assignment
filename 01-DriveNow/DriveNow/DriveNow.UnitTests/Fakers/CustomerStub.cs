@@ -3,7 +3,7 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.UnitTests.Fakers;
 
-public class CustomerStub : ICustomerRepo
+public class CustomerStub : ICustomerRepository
 {
     public List<Customer> GetAll()
     {

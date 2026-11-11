@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DriveNow.Infrastructure.Repositories;
 
-public interface IVehicleRepo
+public interface IVehicleRepository
 {
     Vehicle? GetById(int id);
     List<Vehicle> GetAll();

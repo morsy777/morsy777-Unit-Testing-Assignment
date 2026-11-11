@@ -10,7 +10,7 @@ public class CancellationService(TimeProvider timeProvider)
 {
     readonly BookingRepository _bookings = new();
     readonly VehicleRepository _vehicles = new();
-    readonly CustomerRepo _customers = new();
+    readonly CustomerRepository _customers = new();
     readonly PromoCodeRepository _promos = new();
     readonly PaymentGateway _payments = new();
     readonly SmsSender _sms = new();

@@ -14,7 +14,7 @@ public class ReturnService(TimeProvider timeProvider)
 {
     readonly BookingRepository _bookings = new();
     readonly VehicleRepository _vehicles = new();
-    readonly CustomerRepo _customers = new();
+    readonly CustomerRepository _customers = new();
     readonly PaymentGateway _payments = new();
     readonly EmailSender _email = new();
     private readonly TimeProvider _timeProvider = timeProvider;

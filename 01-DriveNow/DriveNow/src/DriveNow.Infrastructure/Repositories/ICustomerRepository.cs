@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DriveNow.Infrastructure.Repositories;
 
-public interface ICustomerRepo
+public interface ICustomerRepository
 {
     Customer? GetById(int id);
     List<Customer> GetAll();

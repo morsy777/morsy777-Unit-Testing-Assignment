@@ -62,7 +62,7 @@ public class BookingServiceTests
             IsBlacklisted = true
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(1))
@@ -96,7 +96,7 @@ public class BookingServiceTests
             DateOfBirth = new DateTime(2006, 1, 1), // Under 21 years old
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(2))
@@ -130,7 +130,7 @@ public class BookingServiceTests
             LicenseIssueDate = new DateTime(2025, 12, 1), // Less than 1 year of license
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(3))
@@ -165,7 +165,7 @@ public class BookingServiceTests
             LicenseIssueDate = new DateTime(2015, 1, 1), // More than 1 year of license
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(4))
@@ -206,8 +206,8 @@ public class BookingServiceTests
             IsAvailable = false // Vehicle is not available
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
-        var vehicleRepo = new Mock<IVehicleRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(4))
@@ -283,8 +283,8 @@ public class BookingServiceTests
             Category = VehicleCategory.Luxury
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
-        var vehicleRepo = new Mock<IVehicleRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(4))
@@ -326,8 +326,8 @@ public class BookingServiceTests
             Category = VehicleCategory.Van
         };
 
-        var customerRepo = new Mock<ICustomerRepo>();
-        var vehicleRepo = new Mock<IVehicleRepo>();
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
 
         customerRepo
             .Setup(repo => repo.GetById(4))
@@ -344,8 +344,144 @@ public class BookingServiceTests
         ex.Message.ShouldBe("Vans require 2 years of license");
     }
 
+
+    [Theory]
+    [InlineData(1)]
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenPickupBefore2HoursFromNow(int hours)
+    {
+        // Arrange
+        var now = new DateTime(2026, 11, 7, 10, 0, 0);
+        var request = new BookingRequest();
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var promoRepo = new Mock<IPromoCodeRepository>();
+
+        request.CustomerId = 4;
+        request.VehicleId = 2;
+        request.PickupAt = now.AddHours(hours);
+
+        var customer = new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(2004, 7, 1),
+            LicenseIssueDate = new DateTime(2025, 1, 1)
+        };
+
+        var vehicle = new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy
+        };
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(customer);
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(vehicle);
+
+        var sut = new BookingService(
+            new FakeTimeProvider(now),
+            promoRepo.Object,
+            customerRepo.Object,
+            vehicleRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => sut.CreateBooking(request));
+
+        ex.Message.ShouldBe("Pickup must be at least 2 hours from now");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(31)]
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenRentalPeriodIsInvalid(int rentalDays)
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(rentalDays)
+        };
+
+        var validCustomer = new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(2004, 7, 1),
+            LicenseIssueDate = new DateTime(2025, 1, 1)
+        };
+
+        var validVehicle = new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(validCustomer);
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(validVehicle);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object, 
+            vehicleRepository: vehicleRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+
+        ex.Message.ShouldBe("Rental period is invalid");
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(4)]
+    public void CreateBooking_ShouldThrowBookingRejectedException_WhenAdditionalDriversOutsideAllowedRange(int additionalDrivers)
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            AdditionalDrivers = additionalDrivers
+        };
+
+        var validCustomer = new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(2004, 7, 1),
+            LicenseIssueDate = new DateTime(2025, 1, 1)
+        };
+
+        var validVehicle = new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(validCustomer);
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(validVehicle);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+
+        ex.Message.ShouldBe("Up to 3 additional drivers allowed");
+    }
+
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
-        ICustomerRepo? customerRepository = null, IVehicleRepo? vehicleRepository = null)
+        ICustomerRepository? customerRepository = null, IVehicleRepository? vehicleRepository = null)
     {
         var timeProvider = new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));

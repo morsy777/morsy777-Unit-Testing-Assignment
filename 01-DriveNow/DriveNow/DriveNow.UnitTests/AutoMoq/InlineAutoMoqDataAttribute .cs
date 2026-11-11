@@ -8,7 +8,7 @@ namespace DriveNow.UnitTests.AutoMoq;
 public class InlineAutoMoqDataAttribute : InlineAutoDataAttribute
 {
     public InlineAutoMoqDataAttribute(params object[] values)
-        : base(CreateFixture, values)
+        : base(CreateFixture(), values)
     {
     }
 
@@ -17,12 +17,9 @@ public class InlineAutoMoqDataAttribute : InlineAutoDataAttribute
         var fixture = new Fixture();
 
         fixture.Customize(new AutoMoqCustomization());
-
         fixture.Inject<TimeProvider>(
             new FakeTimeProvider(
                 new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero)));
-
         return fixture;
     }
 }
-

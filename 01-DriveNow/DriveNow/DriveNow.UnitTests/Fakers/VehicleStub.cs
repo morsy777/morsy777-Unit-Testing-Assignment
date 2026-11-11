@@ -4,7 +4,7 @@ using DriveNow.UnitTests.Tests;
 
 namespace DriveNow.UnitTests.Fakers;
 
-public class VehicleStub : IVehicleRepo
+public class VehicleStub : IVehicleRepository
 {
     public List<Vehicle> GetAll()
     {
