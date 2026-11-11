@@ -591,6 +591,64 @@ public class BookingServiceTests
         ex.Message.ShouldBe("Customer already has 2 active bookings");
     }
 
+    [Fact]
+    public void CreateBooking_ShouldCalculateCorrectPrice_WhenRequestIsValid()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(2),
+            InsurancePlan = InsurancePlan.Basic,
+            AdditionalDrivers = 0,
+            PromoCode = null
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1),
+            LoyaltyTier = LoyaltyTier.None
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy,
+            DailyRate = 1000m
+        });
+
+        bookingRepo
+            .Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([]);
+
+        bookingRepo
+            .Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object);
+
+        // Act
+        var booking = bookingService.CreateBooking(request);
+
+        // Assert
+        booking.Price.RentalDays.ShouldBe(2);
+        booking.Price.BaseAmount.ShouldBe(2000m);
+        booking.Price.Total.ShouldBe(2000m);
+    }
+
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
         ICustomerRepository? customerRepository = null,
         IVehicleRepository? vehicleRepository = null,
