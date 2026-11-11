@@ -21,6 +21,16 @@ namespace DriveNow.UnitTests.Tests;
 
 public class BookingServiceTests
 {
+    public static TheoryData<VehicleCategory, InsurancePlan, LoyaltyTier, decimal> DepositScenarios => new()
+    {
+        { VehicleCategory.Economy, InsurancePlan.Basic, LoyaltyTier.None, 1000m },
+        { VehicleCategory.Compact, InsurancePlan.Basic, LoyaltyTier.None, 1000m },
+        { VehicleCategory.SUV, InsurancePlan.Basic, LoyaltyTier.None, 2500m },
+        { VehicleCategory.Van, InsurancePlan.Basic, LoyaltyTier.None, 2500m },
+        { VehicleCategory.Luxury, InsurancePlan.Basic, LoyaltyTier.None, 5000m },
+        { VehicleCategory.Economy, InsurancePlan.Premium, LoyaltyTier.None, 500m }
+    };
+
     [Fact]
     public void CreatBooking_ShouldThrowCustomerNotFoundException_WhenCustomerDoesNotExist()
     {
@@ -769,6 +779,185 @@ public class BookingServiceTests
         booking.Reference.ShouldMatch("^DN-20261110-[A-Z0-9]{4}$");
     }
 
+    [Theory]
+    [MemberData(nameof(DepositScenarios))]
+    public void CreateBooking_WithDeposit_ShouldCalculateAndChargeDeposit(VehicleCategory category, InsurancePlan insurancePlan,
+        LoyaltyTier loyaltyTier, decimal expectedDeposit)
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            InsurancePlan = insurancePlan
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+        var paymentGateway = new Mock<IPaymentGateway>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1),
+            LoyaltyTier = loyaltyTier
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = category,
+            DailyRate = 1000m
+        });
+
+        bookingRepo.Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([]);
+
+        bookingRepo.Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        paymentGateway
+            .Setup(gateway => gateway.Charge(4, expectedDeposit, It.IsAny<string>()))
+            .Returns("PAY-TEST");
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object,
+            paymentGateway: paymentGateway);
+
+        // Act
+        var booking = bookingService.CreateBooking(request);
+
+        // Assert
+        booking.Deposit.ShouldBe(expectedDeposit);
+
+        paymentGateway.Verify(gateway => gateway.Charge(
+            4,
+            expectedDeposit,
+            It.Is<string>(description => description == $"Deposit {booking.Reference}")),
+            Times.Once);
+    }
+
+    [Fact]
+    public void CreateBooking_ShouldNotChargeGateway_WhenCustomerIsPlatinum()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            InsurancePlan = InsurancePlan.Premium
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+        var paymentGateway = new Mock<IPaymentGateway>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1),
+            LoyaltyTier = LoyaltyTier.Platinum
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy,
+            DailyRate = 1000m
+        });
+
+        bookingRepo.Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([]);
+
+        bookingRepo.Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object,
+            paymentGateway: paymentGateway);
+
+        // Act
+        var booking = bookingService.CreateBooking(request);
+
+        // Assert
+        booking.Deposit.ShouldBe(0m);
+
+        paymentGateway
+            .Verify(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void CreateBooking_ShouldNotSaveBooking_WhenPaymentGatewayFails()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            InsurancePlan = InsurancePlan.Basic
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+        var paymentGateway = new Mock<IPaymentGateway>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1),
+            LoyaltyTier = LoyaltyTier.None
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy,
+            DailyRate = 1000m
+        });
+
+        bookingRepo.Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([]);
+
+        bookingRepo.Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        paymentGateway
+            .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
+            .Throws(new PaymentFailedException("Gateway timeout"));
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object,
+            paymentGateway: paymentGateway);
+
+        // Act & Assert
+        Should.Throw<PaymentFailedException>(() => bookingService.CreateBooking(request));
+        bookingRepo.Verify(repo => repo.Add(It.IsAny<Booking>()), Times.Never);
+    }
+
 
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
@@ -786,10 +975,13 @@ public class BookingServiceTests
         customerRepository ??= new CustomerStub();
         vehicleRepository ??= new VehicleStub();
         bookingRepository ??= new BookingStub();
-        paymentGateway ??= new Mock<IPaymentGateway>();
-        paymentGateway
-            .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
-            .Returns("PAY-TEST");
+        if (paymentGateway is null)
+        {
+            paymentGateway = new Mock<IPaymentGateway>();
+            paymentGateway
+                .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
+                .Returns("PAY-TEST");
+        }
 
         return new BookingService(
             timeProvider,
