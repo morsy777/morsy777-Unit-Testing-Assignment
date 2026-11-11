@@ -12,11 +12,12 @@ namespace DriveNow.Application.Services;
 public class BookingService(TimeProvider timeProvider, 
     IPromoCodeRepository promoRepository, 
     ICustomerRepository customerRepo,
-    IVehicleRepository vehicleRepo)
+    IVehicleRepository vehicleRepo,
+    IBookingRepository bookingRepo)
 {
     readonly ICustomerRepository _customers = customerRepo;
     readonly IVehicleRepository _vehicles = vehicleRepo;
-    readonly BookingRepository _bookings = new();
+    readonly IBookingRepository _bookings = bookingRepo;
     readonly IPromoCodeRepository _promos = promoRepository;
     readonly PricingService _pricing = new(timeProvider, promoRepository);
     readonly PaymentGateway _payments = new();

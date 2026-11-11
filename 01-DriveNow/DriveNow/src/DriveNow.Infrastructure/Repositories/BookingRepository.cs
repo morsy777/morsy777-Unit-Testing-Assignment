@@ -4,7 +4,7 @@ using DriveNow.Infrastructure.Persistence;
 
 namespace DriveNow.Infrastructure.Repositories;
 
-public class BookingRepository
+public class BookingRepository : IBookingRepository
 {
     public Booking? GetById(int id) =>
         InMemoryDatabase.Bookings.FirstOrDefault(booking => booking.Id == id);

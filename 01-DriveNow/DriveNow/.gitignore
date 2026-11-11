@@ -1,6 +1,7 @@
 bin/
 obj/
 .vs/
+.vs/copilotSnapsot/
 .idea/
 *.user
 TestResults/

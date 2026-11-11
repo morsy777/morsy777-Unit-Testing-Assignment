@@ -356,6 +356,7 @@ public class BookingServiceTests
         var customerRepo = new Mock<ICustomerRepository>();
         var vehicleRepo = new Mock<IVehicleRepository>();
         var promoRepo = new Mock<IPromoCodeRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
 
         request.CustomerId = 4;
         request.VehicleId = 2;
@@ -382,7 +383,8 @@ public class BookingServiceTests
             new FakeTimeProvider(now),
             promoRepo.Object,
             customerRepo.Object,
-            vehicleRepo.Object);
+            vehicleRepo.Object,
+            bookingRepo.Object);
 
         // Act & Assert
         var ex = Should.Throw<BookingRejectedException>(() => sut.CreateBooking(request));
@@ -495,52 +497,54 @@ public class BookingServiceTests
             Status = BookingStatus.Reserved
         };
 
-        InMemoryDatabase.Bookings.Add(existingBooking);
-
-        try
+        var request = new BookingRequest
         {
-            var request = new BookingRequest
-            {
-                CustomerId = 4,
-                VehicleId = 2,
-                PickupAt = new DateTime(2026, 11, 11, 10, 0, 0),
-                ReturnAt = new DateTime(2026, 11, 13, 10, 0, 0)
-            };
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = new DateTime(2026, 11, 11, 10, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 13, 10, 0, 0)
+        };
 
-            var customerRepo = new Mock<ICustomerRepository>();
-            var vehicleRepo = new Mock<IVehicleRepository>();
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
 
-            customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
-            {
-                Id = 4,
-                DateOfBirth = new DateTime(2004, 7, 1),
-                LicenseIssueDate = new DateTime(2025, 1, 1)
-            });
-
-            vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
-            {
-                Id = 2,
-                IsAvailable = true,
-                Category = VehicleCategory.Economy
-            });
-
-            var bookingService = CreateBookingService(
-                customerRepository: customerRepo.Object,
-                vehicleRepository: vehicleRepo.Object);
-
-            // Act & Assert
-            var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
-
-            ex.Message.ShouldBe("Vehicle is already booked for these dates");
-        }
-        finally
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
         {
-            InMemoryDatabase.Bookings.Remove(existingBooking);
-        }
+            Id = 4,
+            DateOfBirth = new DateTime(2004, 7, 1),
+            LicenseIssueDate = new DateTime(2025, 1, 1)
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy
+        });
+
+        bookingRepo
+            .Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([existingBooking]);
+        bookingRepo
+            .Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
+
+        ex.Message.ShouldBe("Vehicle is already booked for these dates");
     }
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
-        ICustomerRepository? customerRepository = null, IVehicleRepository? vehicleRepository = null)
+        ICustomerRepository? customerRepository = null,
+        IVehicleRepository? vehicleRepository = null,
+        IBookingRepository? bookingRepository = null)
     {
         var timeProvider = new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
@@ -549,7 +553,13 @@ public class BookingServiceTests
 
         customerRepository ??= new CustomerStub();
         vehicleRepository ??= new VehicleStub();
+        bookingRepository ??= new BookingStub();
 
-        return new BookingService(timeProvider, promoCodeRepository, customerRepository, vehicleRepository);
+        return new BookingService(
+            timeProvider,
+            promoCodeRepository,
+            customerRepository,
+            vehicleRepository,
+            bookingRepository);
     }
 }
