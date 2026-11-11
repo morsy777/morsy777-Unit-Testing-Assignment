@@ -649,12 +649,77 @@ public class BookingServiceTests
         booking.Price.Total.ShouldBe(2000m);
     }
 
+    [Fact]
+    public void CreateBooking_ShouldSetReservedStatusCreatedAtAndStartMileage_WhenRequestIsValid()
+    {
+        // Arrange
+        var fixedTime = new DateTimeOffset(
+            2026, 11, 9, 10, 0, 0, TimeSpan.Zero);
+        var fakeTimeProvider = new FakeTimeProvider(fixedTime);
+
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            InsurancePlan = InsurancePlan.Basic,
+            AdditionalDrivers = 0
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+        var vehicleMileage = 2004;
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1),
+            LoyaltyTier = LoyaltyTier.None
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy,
+            DailyRate = 1000m,
+            Mileage = vehicleMileage
+        });
+
+        bookingRepo.Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([]);
+
+        bookingRepo.Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object,
+            timeProvider: fakeTimeProvider);
+
+        // Act
+        var booking = bookingService.CreateBooking(request);
+
+        // Assert
+        booking.Status.ShouldBe(BookingStatus.Reserved);
+        booking.CreatedAt.ShouldBe(fixedTime.DateTime);
+        booking.StartMileage.ShouldBe(vehicleMileage);
+    }
+
+
+
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
         ICustomerRepository? customerRepository = null,
         IVehicleRepository? vehicleRepository = null,
-        IBookingRepository? bookingRepository = null)
+        IBookingRepository? bookingRepository = null,
+        FakeTimeProvider? timeProvider = null)
     {
-        var timeProvider = new FakeTimeProvider(currentTime ??
+        timeProvider ??= new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
 
         var promoCodeRepository = new PromoCodeRepository();

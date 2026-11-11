@@ -58,7 +58,7 @@ public class BookingService(TimeProvider timeProvider,
             PromoCode = request.PromoCode,
             Price = price,
             Status = BookingStatus.Reserved,
-            CreatedAt = DateTime.Now,
+            CreatedAt = _timeProvider.GetLocalNow().DateTime,
             StartMileage = vehicle.Mileage,
             Reference = "DN-" + request.PickupAt.ToString("yyyyMMdd") + "-" + RandomCode()
         };
