@@ -13,14 +13,15 @@ public class BookingService(TimeProvider timeProvider,
     IPromoCodeRepository promoRepository, 
     ICustomerRepository customerRepo,
     IVehicleRepository vehicleRepo,
-    IBookingRepository bookingRepo)
+    IBookingRepository bookingRepo,
+    IPaymentGateway paymentGateway)
 {
     readonly ICustomerRepository _customers = customerRepo;
     readonly IVehicleRepository _vehicles = vehicleRepo;
     readonly IBookingRepository _bookings = bookingRepo;
     readonly IPromoCodeRepository _promos = promoRepository;
     readonly PricingService _pricing = new(timeProvider, promoRepository);
-    readonly PaymentGateway _payments = new();
+    readonly IPaymentGateway _payments = paymentGateway;
     readonly SmsSender _sms = new();
     readonly EmailSender _email = new();
     private readonly TimeProvider _timeProvider = timeProvider;

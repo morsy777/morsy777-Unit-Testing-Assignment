@@ -7,6 +7,7 @@ using DriveNow.Application.Services;
 using DriveNow.Domain.Entities;
 using DriveNow.Domain.Enums;
 using DriveNow.Domain.Exceptions;
+using DriveNow.Infrastructure.External;
 using DriveNow.Infrastructure.Persistence;
 using DriveNow.Infrastructure.Repositories;
 using DriveNow.UnitTests.AutoMoq;
@@ -357,6 +358,10 @@ public class BookingServiceTests
         var vehicleRepo = new Mock<IVehicleRepository>();
         var promoRepo = new Mock<IPromoCodeRepository>();
         var bookingRepo = new Mock<IBookingRepository>();
+        var paymentGateway = new Mock<IPaymentGateway>();
+        paymentGateway
+            .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
+            .Returns("PAY-TEST");
 
         request.CustomerId = 4;
         request.VehicleId = 2;
@@ -384,7 +389,8 @@ public class BookingServiceTests
             promoRepo.Object,
             customerRepo.Object,
             vehicleRepo.Object,
-            bookingRepo.Object);
+            bookingRepo.Object,
+            paymentGateway.Object);
 
         // Act & Assert
         var ex = Should.Throw<BookingRejectedException>(() => sut.CreateBooking(request));
@@ -711,13 +717,66 @@ public class BookingServiceTests
         booking.StartMileage.ShouldBe(vehicleMileage);
     }
 
+    [Fact]
+    public void CreateBooking_ShouldGenerateCorrectReference_WhenRequestIsValid()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            InsurancePlan = InsurancePlan.Basic
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
+        {
+            Id = 4,
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1),
+            LoyaltyTier = LoyaltyTier.None
+        });
+
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy,
+            DailyRate = 1000m
+        });
+
+        bookingRepo.Setup(repo => repo.GetOpenBookingsForVehicle(2))
+            .Returns([]);
+
+        bookingRepo.Setup(repo => repo.CountOpenBookingsForCustomer(4))
+            .Returns(0);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object);
+
+        // Act
+        var booking = bookingService.CreateBooking(request);
+
+        // Assert
+        booking.Reference.ShouldMatch("^DN-20261110-[A-Z0-9]{4}$");
+    }
+
 
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
         ICustomerRepository? customerRepository = null,
         IVehicleRepository? vehicleRepository = null,
         IBookingRepository? bookingRepository = null,
-        FakeTimeProvider? timeProvider = null)
+        FakeTimeProvider? timeProvider = null,
+        Mock<IPaymentGateway>? paymentGateway = null)
     {
         timeProvider ??= new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
@@ -727,12 +786,17 @@ public class BookingServiceTests
         customerRepository ??= new CustomerStub();
         vehicleRepository ??= new VehicleStub();
         bookingRepository ??= new BookingStub();
+        paymentGateway ??= new Mock<IPaymentGateway>();
+        paymentGateway
+            .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
+            .Returns("PAY-TEST");
 
         return new BookingService(
             timeProvider,
             promoCodeRepository,
             customerRepository,
             vehicleRepository,
-            bookingRepository);
+            bookingRepository,
+            paymentGateway.Object);
     }
 }
