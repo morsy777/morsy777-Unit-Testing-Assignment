@@ -400,7 +400,9 @@ public class BookingServiceTests
             customerRepo.Object,
             vehicleRepo.Object,
             bookingRepo.Object,
-            paymentGateway.Object);
+            paymentGateway.Object,
+            new Mock<ISmsSender>().Object,
+            new Mock<IEmailSender>().Object);
 
         // Act & Assert
         var ex = Should.Throw<BookingRejectedException>(() => sut.CreateBooking(request));
@@ -958,6 +960,85 @@ public class BookingServiceTests
         bookingRepo.Verify(repo => repo.Add(It.IsAny<Booking>()), Times.Never);
     }
 
+    [Fact]
+    public void CreateBooking_ShouldIncrementPromoStoreBookingAndNotify_WhenPromoIsUsed()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var request = new BookingRequest
+        {
+            CustomerId = 4,
+            VehicleId = 2,
+            PickupAt = pickupAt,
+            ReturnAt = pickupAt.AddDays(1),
+            InsurancePlan = InsurancePlan.Basic,
+            PromoCode = "save15"
+        };
+
+        var promo = new PromoCode
+        {
+            Code = "SAVE15",
+            DiscountPercent = 15,
+            ValidFrom = new DateTime(2026, 1, 1),
+            ValidUntil = new DateTime(2026, 12, 31),
+            MinDays = 1,
+            MaxUses = 10,
+            UsedCount = 2
+        };
+
+        var customer = new Customer
+        {
+            Id = 4,
+            Email = "morsi@test.com",
+            Phone = "01065622044",
+            DateOfBirth = new DateTime(1995, 1, 1),
+            LicenseIssueDate = new DateTime(2015, 1, 1)
+        };
+
+        var vehicle = new Vehicle
+        {
+            Id = 2,
+            IsAvailable = true,
+            Category = VehicleCategory.Economy,
+            DailyRate = 1000m
+        };
+
+        var customerRepo = new Mock<ICustomerRepository>();
+        var vehicleRepo = new Mock<IVehicleRepository>();
+        var bookingRepo = new Mock<IBookingRepository>();
+        var promoRepo = new Mock<IPromoCodeRepository>();
+        var smsSender = new Mock<ISmsSender>();
+        var emailSender = new Mock<IEmailSender>();
+
+        customerRepo.Setup(repo => repo.GetById(4)).Returns(customer);
+        vehicleRepo.Setup(repo => repo.GetById(2)).Returns(vehicle);
+        bookingRepo.Setup(repo => repo.GetOpenBookingsForVehicle(2)).Returns([]);
+        bookingRepo.Setup(repo => repo.CountOpenBookingsForCustomer(4)).Returns(0);
+        promoRepo.Setup(repo => repo.GetByCode("save15")).Returns(promo);
+
+        var bookingService = CreateBookingService(
+            customerRepository: customerRepo.Object,
+            vehicleRepository: vehicleRepo.Object,
+            bookingRepository: bookingRepo.Object,
+            promoCodeRepository: promoRepo,
+            smsSender: smsSender,
+            emailSender: emailSender);
+
+        // Act
+        var booking = bookingService.CreateBooking(request);
+        var confirmation = $"Booking {booking.Reference} confirmed";
+
+        // Assert
+        promo.UsedCount.ShouldBe(3);
+        promoRepo.Verify(repo => repo.Update(promo), Times.Once);
+        bookingRepo.Verify(repo => repo.Add(booking), Times.Once);
+        smsSender.Verify(sender => sender.Send(customer.Phone, confirmation), Times.Once);
+        emailSender.Verify(sender => sender.Send(customer.Email, confirmation, confirmation), Times.Once);
+
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "audit.log"))
+            .ShouldContain($"Booking {booking.Reference} created");
+    }
+
 
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
@@ -965,16 +1046,22 @@ public class BookingServiceTests
         IVehicleRepository? vehicleRepository = null,
         IBookingRepository? bookingRepository = null,
         FakeTimeProvider? timeProvider = null,
-        Mock<IPaymentGateway>? paymentGateway = null)
+        Mock<IPaymentGateway>? paymentGateway = null,
+        Mock<IPromoCodeRepository>? promoCodeRepository = null,
+        Mock<ISmsSender>? smsSender = null,
+        Mock<IEmailSender>? emailSender = null)
     {
         timeProvider ??= new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
 
-        var promoCodeRepository = new PromoCodeRepository();
+        promoCodeRepository ??= new Mock<IPromoCodeRepository>();
 
         customerRepository ??= new CustomerStub();
         vehicleRepository ??= new VehicleStub();
         bookingRepository ??= new BookingStub();
+
+        promoCodeRepository ??= new Mock<IPromoCodeRepository>();
+
         if (paymentGateway is null)
         {
             paymentGateway = new Mock<IPaymentGateway>();
@@ -982,13 +1069,18 @@ public class BookingServiceTests
                 .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
                 .Returns("PAY-TEST");
         }
+        smsSender ??= new Mock<ISmsSender>();
+        emailSender ??= new Mock<IEmailSender>();
 
         return new BookingService(
             timeProvider,
-            promoCodeRepository,
+            promoCodeRepository.Object,
             customerRepository,
             vehicleRepository,
             bookingRepository,
-            paymentGateway.Object);
+            paymentGateway.Object,
+            smsSender.Object,
+            emailSender.Object);
+
     }
 }

@@ -20,8 +20,10 @@ internal static class Program
     static readonly IVehicleRepository Vehicles = new VehicleRepository();
     static readonly BookingRepository Bookings = new();
     static readonly IPaymentGateway Payments = new PaymentGateway();
+    static readonly ISmsSender Sms = new SmsSender();
+    static readonly IEmailSender Email = new EmailSender();
     static readonly PricingService Pricing = new(TimeProvider, Promo);
-    static readonly BookingService BookingService = new(TimeProvider, Promo, Customers, Vehicles, Bookings, Payments);
+    static readonly BookingService BookingService = new(TimeProvider, Promo, Customers, Vehicles, Bookings, Payments, Sms, Email);
     static readonly ReturnService ReturnService = new(TimeProvider);
     static readonly CancellationService CancellationService = new(TimeProvider);
 

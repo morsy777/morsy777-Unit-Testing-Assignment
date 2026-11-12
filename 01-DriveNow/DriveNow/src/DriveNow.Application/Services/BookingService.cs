@@ -9,12 +9,15 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class BookingService(TimeProvider timeProvider, 
+public class BookingService(
+    TimeProvider timeProvider, 
     IPromoCodeRepository promoRepository, 
     ICustomerRepository customerRepo,
     IVehicleRepository vehicleRepo,
     IBookingRepository bookingRepo,
-    IPaymentGateway paymentGateway)
+    IPaymentGateway paymentGateway,
+    ISmsSender smsSender,
+    IEmailSender emailSender)
 {
     readonly ICustomerRepository _customers = customerRepo;
     readonly IVehicleRepository _vehicles = vehicleRepo;
@@ -22,8 +25,8 @@ public class BookingService(TimeProvider timeProvider,
     readonly IPromoCodeRepository _promos = promoRepository;
     readonly PricingService _pricing = new(timeProvider, promoRepository);
     readonly IPaymentGateway _payments = paymentGateway;
-    readonly SmsSender _sms = new();
-    readonly EmailSender _email = new();
+    readonly ISmsSender _sms = smsSender;
+    readonly IEmailSender _email = emailSender;
     private readonly TimeProvider _timeProvider = timeProvider;
 
     public Booking CreateBooking(BookingRequest request)
