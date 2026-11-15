@@ -109,10 +109,46 @@ public class ReturnServiceTests
         report.LateFee.ShouldBe(expectedLateFee);
     }
 
-    private static ReturnService CreateService(
-        Booking booking,
-        DateTimeOffset? now = null,
-        Mock<IPaymentGateway>? payments = null)
+    [Theory]
+    [InlineData(VehicleCategory.Economy, 2, 500, 0, 0)]
+    [InlineData(VehicleCategory.Economy, 2, 510, 10, 7.50)]
+    [InlineData(VehicleCategory.Luxury, 2, 510, 10, 15.00)]
+    public void ProcessReturn_ShouldCalculateMileageFee_WhenDistanceExceedsAllowance(VehicleCategory category, int rentalDays, int drivenKilometres,
+        int expectedExtraKilometres, decimal expectedMileageFee)
+    {
+        var booking = CreateBooking();
+        booking.Price.RentalDays = rentalDays;
+        booking.ReturnAt = new DateTime(2026, 11, 12, 10, 0, 0);
+
+        var service = CreateService(booking, vehicleCategory: category);
+
+        var report = service.ProcessReturn(booking.Id, booking.StartMileage + drivenKilometres, 4, 0);
+
+        report.AllowedKm.ShouldBe(250 * rentalDays);
+        report.ExtraKm.ShouldBe(expectedExtraKilometres);
+        report.MileageFee.ShouldBe(expectedMileageFee);
+    }
+
+    [Theory]
+    [InlineData(VehicleCategory.Economy, 4, 0, 0)]
+    [InlineData(VehicleCategory.Economy, 3, 1, 200)]
+    [InlineData(VehicleCategory.Economy, 2, 2, 400)]
+    [InlineData(VehicleCategory.SUV, 3, 1, 300)]
+    [InlineData(VehicleCategory.Van, 2, 2, 600)]
+    public void ProcessReturn_ShouldCalculateFuelFee_WhenFuelQuartersAreMissing(VehicleCategory category, int fuelQuarters,
+        int expectedMissingQuarters, decimal expectedFuelFee)
+    {
+        var booking = CreateBooking();
+        var service = CreateService(booking, vehicleCategory: category);
+
+        var report = service.ProcessReturn(booking.Id, booking.StartMileage, fuelQuarters, 0);
+
+        report.MissingFuelQuarters.ShouldBe(expectedMissingQuarters);
+        report.FuelFee.ShouldBe(expectedFuelFee);
+    }
+
+    private static ReturnService CreateService(Booking booking, DateTimeOffset? now = null,
+        Mock<IPaymentGateway>? payments = null, VehicleCategory vehicleCategory = VehicleCategory.Economy)
     {
         var bookings = new Mock<IBookingRepository>();
         bookings.Setup(repository => repository.GetById(booking.Id))
@@ -123,7 +159,7 @@ public class ReturnServiceTests
             .Returns(new Vehicle
             {
                 Id = booking.VehicleId,
-                Category = VehicleCategory.Economy,
+                Category = vehicleCategory,
                 DailyRate = 100m,
                 Mileage = booking.StartMileage
             });
