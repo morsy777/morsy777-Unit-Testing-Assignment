@@ -147,6 +147,24 @@ public class ReturnServiceTests
         report.FuelFee.ShouldBe(expectedFuelFee);
     }
 
+    [Theory]
+    [InlineData(InsurancePlan.Basic, 5000, 5000)]
+    [InlineData(InsurancePlan.Basic, 15000, 10000)]
+    [InlineData(InsurancePlan.Standard, 2000, 2000)]
+    [InlineData(InsurancePlan.Standard, 5000, 3000)]
+    [InlineData(InsurancePlan.Premium, 5000, 0)]
+    public void ProcessReturn_ShouldCapDamageChargeAtDeductible_WhenDamageIsReported(InsurancePlan insurancePlan, 
+        decimal reportedDamage, decimal expectedDamageCharge)
+    {
+        var booking = CreateBooking();
+        booking.InsurancePlan = insurancePlan;
+        var service = CreateService(booking);
+
+        var report = service.ProcessReturn(booking.Id, booking.StartMileage, 4, reportedDamage);
+
+        report.DamageCharge.ShouldBe(expectedDamageCharge);
+    }
+
     private static ReturnService CreateService(Booking booking, DateTimeOffset? now = null,
         Mock<IPaymentGateway>? payments = null, VehicleCategory vehicleCategory = VehicleCategory.Economy)
     {
