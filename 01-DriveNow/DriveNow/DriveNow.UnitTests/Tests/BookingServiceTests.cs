@@ -1039,6 +1039,106 @@ public class BookingServiceTests
             .ShouldContain($"Booking {booking.Reference} created");
     }
 
+    [Fact]
+    public void StartRental_ShouldThrowBookingNotFoundException_WhenBookingDoesNotExist()
+    {
+        // Arrange
+        var bookingRepo = new Mock<IBookingRepository>();
+
+        bookingRepo.Setup(repo => repo.GetById(999))
+            .Returns((Booking?)null);
+
+        var bookingService = CreateBookingService(bookingRepository: bookingRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<BookingNotFoundException>(() => bookingService.StartRental(999));
+
+        ex.Message.ShouldBe("Booking #999 not found");
+    }
+
+    [Theory]
+    [InlineData(BookingStatus.Active)]
+    [InlineData(BookingStatus.Cancelled)]
+    public void StartRental_ShouldThrowInvalidBookingStateException_WhenBookingIsNotReserved(BookingStatus status)
+    {
+        // Arrange
+        var booking = new Booking
+        {
+            Id = 7,
+            PickupAt = new DateTime(2026, 11, 10, 10, 0, 0),
+            Status = status
+        };
+
+        var bookingRepo = new Mock<IBookingRepository>();
+
+        bookingRepo.Setup(repo => repo.GetById(7))
+            .Returns(booking);
+
+        var bookingService = CreateBookingService(bookingRepository: bookingRepo.Object);
+
+        // Act & Assert
+        var ex = Should.Throw<InvalidBookingStateException>(() => bookingService.StartRental(7));
+
+        ex.Message.ShouldBe("Only reserved bookings can be started");
+    }
+
+    [Fact]
+    public void StartRental_ShouldThrowInvalidBookingStateException_WhenItIsMoreThanOneHourBeforePickup()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 11, 10, 0, 0);
+        var booking = new Booking
+        {
+            Id = 7,
+            PickupAt = pickupAt,
+            Status = BookingStatus.Reserved
+        };
+
+        var bookingRepo = new Mock<IBookingRepository>();
+
+        bookingRepo.Setup(repo => repo.GetById(7))
+            .Returns(booking);
+
+        var bookingService = CreateBookingService(
+            bookingRepository: bookingRepo.Object,
+            timeProvider: new FakeTimeProvider(new DateTimeOffset(2026, 11, 10, 8, 0, 0, TimeSpan.Zero)));
+
+        // Act & Assert
+        var ex = Should.Throw<InvalidBookingStateException>(() => bookingService.StartRental(7));
+
+        ex.Message.ShouldBe("Too early to start this rental");
+        bookingRepo.Verify(repo => repo.Update(It.IsAny<Booking>()), Times.Never);
+    }
+
+    [Fact]
+    public void StartRental_ShouldSetBookingStatusToActive_WhenItIsWithinOneHourBeforePickup()
+    {
+        // Arrange
+        var pickupAt = new DateTime(2026, 11, 10, 10, 0, 0);
+        var booking = new Booking
+        {
+            Id = 7,
+            PickupAt = pickupAt,
+            Status = BookingStatus.Reserved
+        };
+
+        var bookingRepo = new Mock<IBookingRepository>();
+
+        bookingRepo.Setup(repo => repo.GetById(7))
+            .Returns(booking);
+
+        var bookingService = CreateBookingService(
+            bookingRepository: bookingRepo.Object,
+            timeProvider: new FakeTimeProvider(new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero)));
+
+        // Act
+        bookingService.StartRental(7);
+
+        // Assert
+        booking.Status.ShouldBe(BookingStatus.Active);
+        bookingRepo.Verify(repo => repo.Update(booking), Times.Once);
+    }
+
 
 
     private static BookingService CreateBookingService(DateTimeOffset? currentTime = null,
