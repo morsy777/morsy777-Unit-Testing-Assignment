@@ -1,0 +1,142 @@
+﻿using DriveNow.Application.Services;
+using DriveNow.Domain.Entities;
+using DriveNow.Domain.Enums;
+using DriveNow.Domain.Exceptions;
+using DriveNow.Domain.ValueObjects;
+using DriveNow.Infrastructure.External;
+using DriveNow.Infrastructure.Repositories;
+using Microsoft.Extensions.Time.Testing;
+using Moq;
+using Shouldly;
+
+namespace DriveNow.UnitTests.Tests;
+
+public class ReturnServiceTests
+{
+    [Fact]
+    public void ProcessReturn_ShouldRejectNonActiveBooking_WhenBookingIsNotActive()
+    {
+        var booking = CreateBooking(BookingStatus.Completed);
+        var service = CreateService(booking);
+
+        var exception = Should.Throw<InvalidBookingStateException>(() =>
+            service.ProcessReturn(booking.Id, booking.StartMileage, 4, 0));
+
+        exception.Message.ShouldBe("Only active bookings can be returned");
+    }
+
+    [Fact]
+    public void ProcessReturn_ShouldRejectEndMileageBelowStartMileage_WhenEndMileageIsTooLow()
+    {
+        var booking = CreateBooking();
+        var service = CreateService(booking);
+
+        var exception = Should.Throw<ArgumentException>(() =>
+            service.ProcessReturn(booking.Id, booking.StartMileage - 1, 4, 0));
+
+        exception.Message.ShouldBe("End mileage cannot be below the start mileage");
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(5)]
+    public void ProcessReturn_ShouldRejectFuelQuartersOutsideRange_WhenFuelQuartersAreInvalid(int fuelQuarters)
+    {
+        var booking = CreateBooking();
+        var service = CreateService(booking);
+
+        var exception = Should.Throw<ArgumentException>(() =>
+            service.ProcessReturn(booking.Id, booking.StartMileage, fuelQuarters, 0));
+
+        exception.Message.ShouldBe("Fuel quarters must be between 0 and 4");
+    }
+
+    [Fact]
+    public void ProcessReturn_ShouldUseCurrentTimeAndNotRefundUnusedRentalDays_WhenReturnIsEarly()
+    {
+        var now = new DateTimeOffset(2026, 11, 8, 10, 0, 0, TimeSpan.Zero);
+
+        var booking = CreateBooking();
+        booking.ReturnAt = now.DateTime.AddDays(2);
+        booking.Price = new PriceBreakdown
+        {
+            RentalDays = 3,
+            Total = 300m
+        };
+        booking.Deposit = 100m;
+
+        var payments = new Mock<IPaymentGateway>();
+
+        var service = CreateService(booking, now, payments);
+
+        var report = service.ProcessReturn(booking.Id, booking.StartMileage, 4, 0);
+
+        booking.ActualReturnAt.ShouldBe(now.UtcDateTime);
+
+        report.AllowedKm.ShouldBe(750);
+
+        booking.Price.Total.ShouldBe(300m); // 250 * 3 RentalDays
+
+        payments.Verify(payment => payment.Refund(
+            booking.CustomerId,
+            booking.Deposit,
+            $"Deposit refund {booking.Reference}"), Times.Once);
+
+        payments.Verify(payment => payment.Refund(
+            It.IsAny<int>(),
+            200m,
+            It.IsAny<string>()), Times.Never);
+    }
+
+    private static ReturnService CreateService(
+        Booking booking,
+        DateTimeOffset? now = null,
+        Mock<IPaymentGateway>? payments = null)
+    {
+        var bookings = new Mock<IBookingRepository>();
+        bookings.Setup(repository => repository.GetById(booking.Id))
+            .Returns(booking);
+
+        var vehicles = new Mock<IVehicleRepository>();
+        vehicles.Setup(repository => repository.GetById(booking.VehicleId))
+            .Returns(new Vehicle
+            {
+                Id = booking.VehicleId,
+                Category = VehicleCategory.Economy,
+                DailyRate = 100m,
+                Mileage = booking.StartMileage
+            });
+
+        var customers = new Mock<ICustomerRepository>();
+        customers.Setup(repository => repository.GetById(booking.CustomerId))
+            .Returns(new Customer
+            {
+                Id = booking.CustomerId,
+                Email = "customer@example.com"
+            });
+
+        return new ReturnService(
+            new FakeTimeProvider(now ?? new DateTimeOffset(2026, 11, 8, 10, 0, 0, TimeSpan.Zero)),
+            bookings.Object,
+            vehicles.Object,
+            customers.Object,
+            (payments ?? new Mock<IPaymentGateway>()).Object,
+            Mock.Of<IEmailSender>());
+    }
+
+    private static Booking CreateBooking(BookingStatus status = BookingStatus.Active) =>
+        new()
+        {
+            Id = 1,
+            Reference = "BK-001",
+            CustomerId = 2,
+            VehicleId = 3,
+            StartMileage = 1000,
+            PickupAt = new DateTime(2026, 11, 8, 9, 0, 0),
+            ReturnAt = new DateTime(2026, 11, 9, 9, 0, 0),
+            Status = status,
+            InsurancePlan = InsurancePlan.Premium,
+
+            Price = new PriceBreakdown { RentalDays = 1, Total = 100m }
+        };
+}
