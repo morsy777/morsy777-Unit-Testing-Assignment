@@ -1182,13 +1182,10 @@ public class BookingServiceTests
         timeProvider ??= new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
 
-        promoCodeRepository ??= new Mock<IPromoCodeRepository>();
 
         customerRepository ??= new CustomerStub();
         vehicleRepository ??= new VehicleStub();
         bookingRepository ??= new BookingStub();
-
-        promoCodeRepository ??= new Mock<IPromoCodeRepository>();
 
         if (paymentGateway is null)
         {
@@ -1197,6 +1194,8 @@ public class BookingServiceTests
                 .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
                 .Returns("PAY-TEST");
         }
+
+        promoCodeRepository ??= new Mock<IPromoCodeRepository>();
         smsSender ??= new Mock<ISmsSender>();
         emailSender ??= new Mock<IEmailSender>();
         pricingService ??= new Mock<IPricingService>();

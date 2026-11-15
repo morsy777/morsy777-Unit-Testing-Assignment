@@ -10,14 +10,20 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class ReturnService(TimeProvider timeProvider)
+public class ReturnService(
+    TimeProvider timeProvider,
+    IBookingRepository bookings,
+    IVehicleRepository vehicles,
+    ICustomerRepository customers,
+    IPaymentGateway payments,
+    IEmailSender email)
 {
-    readonly BookingRepository _bookings = new();
-    readonly VehicleRepository _vehicles = new();
-    readonly CustomerRepository _customers = new();
-    readonly PaymentGateway _payments = new();
-    readonly EmailSender _email = new();
     private readonly TimeProvider _timeProvider = timeProvider;
+    private readonly IBookingRepository _bookings = bookings;
+    private readonly IVehicleRepository _vehicles = vehicles;
+    private readonly ICustomerRepository _customers = customers;
+    private readonly IPaymentGateway _payments = payments;
+    private readonly IEmailSender _email = email;
 
     public ReturnReport ProcessReturn(int bookingId, int endMileage, int fuelQuarters, decimal damageCost)
     {

@@ -24,7 +24,7 @@ internal static class Program
     static readonly IEmailSender Email = new EmailSender();
     static readonly IPricingService Pricing = new PricingService(TimeProvider, Promo);
     static readonly BookingService BookingService = new(TimeProvider, Promo, Customers, Vehicles, Bookings, Payments, Sms, Email, Pricing);
-    static readonly ReturnService ReturnService = new(TimeProvider);
+    static readonly ReturnService ReturnService = new(TimeProvider, Bookings, Vehicles, Customers, Payments, Email);
     static readonly CancellationService CancellationService = new(TimeProvider);
 
     static void Main()
