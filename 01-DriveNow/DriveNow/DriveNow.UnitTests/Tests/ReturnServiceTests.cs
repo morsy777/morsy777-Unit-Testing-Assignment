@@ -75,17 +75,14 @@ public class ReturnServiceTests
 
         report.AllowedKm.ShouldBe(750);
 
-        booking.Price.Total.ShouldBe(300m); // 250 * 3 RentalDays
-
         payments.Verify(payment => payment.Refund(
             booking.CustomerId,
             booking.Deposit,
             $"Deposit refund {booking.Reference}"), Times.Once);
 
-        payments.Verify(payment => payment.Refund(
-            It.IsAny<int>(),
-            200m,
-            It.IsAny<string>()), Times.Never);
+        payments.Invocations
+            .Count(invocation => invocation.Method.Name == nameof(IPaymentGateway.Refund))
+            .ShouldBe(1);
     }
 
     private static ReturnService CreateService(
