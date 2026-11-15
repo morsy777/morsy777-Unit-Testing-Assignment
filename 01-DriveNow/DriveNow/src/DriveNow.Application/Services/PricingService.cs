@@ -8,7 +8,7 @@ using DriveNow.Infrastructure.Repositories;
 
 namespace DriveNow.Application.Services;
 
-public class PricingService(TimeProvider timeProvider, IPromoCodeRepository promoCodeRepository) 
+public class PricingService(TimeProvider timeProvider, IPromoCodeRepository promoCodeRepository) : IPricingService
 {
     readonly IPromoCodeRepository _promos = promoCodeRepository;
     private readonly TimeProvider _timeProvider = timeProvider;

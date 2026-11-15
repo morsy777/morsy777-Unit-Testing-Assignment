@@ -7,6 +7,7 @@ using DriveNow.Application.Services;
 using DriveNow.Domain.Entities;
 using DriveNow.Domain.Enums;
 using DriveNow.Domain.Exceptions;
+using DriveNow.Domain.ValueObjects;
 using DriveNow.Infrastructure.External;
 using DriveNow.Infrastructure.Persistence;
 using DriveNow.Infrastructure.Repositories;
@@ -368,7 +369,9 @@ public class BookingServiceTests
         var vehicleRepo = new Mock<IVehicleRepository>();
         var promoRepo = new Mock<IPromoCodeRepository>();
         var bookingRepo = new Mock<IBookingRepository>();
+        var pricingService = new Mock<IPricingService>();
         var paymentGateway = new Mock<IPaymentGateway>();
+
         paymentGateway
             .Setup(gateway => gateway.Charge(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>()))
             .Returns("PAY-TEST");
@@ -402,7 +405,8 @@ public class BookingServiceTests
             bookingRepo.Object,
             paymentGateway.Object,
             new Mock<ISmsSender>().Object,
-            new Mock<IEmailSender>().Object);
+            new Mock<IEmailSender>().Object,
+            pricingService.Object);
 
         // Act & Assert
         var ex = Should.Throw<BookingRejectedException>(() => sut.CreateBooking(request));
@@ -526,6 +530,7 @@ public class BookingServiceTests
         var customerRepo = new Mock<ICustomerRepository>();
         var vehicleRepo = new Mock<IVehicleRepository>();
         var bookingRepo = new Mock<IBookingRepository>();
+        var pricingService = new Mock<IPricingService>();
 
         customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
         {
@@ -544,14 +549,25 @@ public class BookingServiceTests
         bookingRepo
             .Setup(repo => repo.GetOpenBookingsForVehicle(2))
             .Returns([existingBooking]);
+
         bookingRepo
             .Setup(repo => repo.CountOpenBookingsForCustomer(4))
             .Returns(0);
 
+        pricingService
+            .Setup(service => service.Calculate(It.IsAny<Customer>(), It.IsAny<Vehicle>(), request))
+            .Returns(new PriceBreakdown
+            {
+                RentalDays = 2,
+                BaseAmount = 2000m,
+                Total = 2000m
+            });
+
         var bookingService = CreateBookingService(
             customerRepository: customerRepo.Object,
             vehicleRepository: vehicleRepo.Object,
-            bookingRepository: bookingRepo.Object);
+            bookingRepository: bookingRepo.Object,
+            pricingService: pricingService);
 
         // Act & Assert
         var ex = Should.Throw<BookingRejectedException>(() => bookingService.CreateBooking(request));
@@ -628,6 +644,7 @@ public class BookingServiceTests
         var customerRepo = new Mock<ICustomerRepository>();
         var vehicleRepo = new Mock<IVehicleRepository>();
         var bookingRepo = new Mock<IBookingRepository>();
+        var pricingService = new Mock<IPricingService>();
 
         customerRepo.Setup(repo => repo.GetById(4)).Returns(new Customer
         {
@@ -653,10 +670,20 @@ public class BookingServiceTests
             .Setup(repo => repo.CountOpenBookingsForCustomer(4))
             .Returns(0);
 
+        pricingService
+            .Setup(service => service.Calculate(It.IsAny<Customer>(), It.IsAny<Vehicle>(), request))
+            .Returns(new PriceBreakdown
+            {
+                RentalDays = 2,
+                BaseAmount = 2000m,
+                Total = 2000m
+            });
+
         var bookingService = CreateBookingService(
             customerRepository: customerRepo.Object,
             vehicleRepository: vehicleRepo.Object,
-            bookingRepository: bookingRepo.Object);
+            bookingRepository: bookingRepo.Object,
+            pricingService: pricingService);
 
         // Act
         var booking = bookingService.CreateBooking(request);
@@ -1149,7 +1176,8 @@ public class BookingServiceTests
         Mock<IPaymentGateway>? paymentGateway = null,
         Mock<IPromoCodeRepository>? promoCodeRepository = null,
         Mock<ISmsSender>? smsSender = null,
-        Mock<IEmailSender>? emailSender = null)
+        Mock<IEmailSender>? emailSender = null,
+        Mock<IPricingService>? pricingService = null)
     {
         timeProvider ??= new FakeTimeProvider(currentTime ??
             new DateTimeOffset(2026, 11, 7, 10, 0, 0, TimeSpan.Zero));
@@ -1171,6 +1199,7 @@ public class BookingServiceTests
         }
         smsSender ??= new Mock<ISmsSender>();
         emailSender ??= new Mock<IEmailSender>();
+        pricingService ??= new Mock<IPricingService>();
 
         return new BookingService(
             timeProvider,
@@ -1180,7 +1209,8 @@ public class BookingServiceTests
             bookingRepository,
             paymentGateway.Object,
             smsSender.Object,
-            emailSender.Object);
+            emailSender.Object,
+            pricingService.Object);
 
     }
 }

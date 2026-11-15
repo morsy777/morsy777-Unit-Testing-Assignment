@@ -25,6 +25,11 @@ public class BookingStub : IBookingRepository
         return [];
     }
 
+    public List<Booking> GetAll()
+    {
+        return [];
+    }
+
     public void Update(Booking booking)
     {
         return;
