@@ -85,6 +85,30 @@ public class ReturnServiceTests
             .ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData(-1, 0, 0)]
+    [InlineData(59, 59, 0)]
+    [InlineData(60, 60, 10)]
+    [InlineData(61, 61, 20)]
+    [InlineData(240, 240, 40)]
+    [InlineData(241, 241, 100)]
+    [InlineData(1441, 1441, 200)] // 1440 is no. of hours in day.
+    public void ProcessReturn_ShouldCalculateLateFee_WhenReturnMinutesVary(int minutesAfterPlannedReturn, int expectedLateMinutes, decimal expectedLateFee)
+    {
+        var now = new DateTimeOffset(2026, 11, 10, 10, 0, 0, TimeSpan.Zero);
+
+        var booking = CreateBooking();
+        booking.ReturnAt = now.DateTime.AddMinutes(-minutesAfterPlannedReturn);
+        booking.Price.RentalDays = 1;
+
+        var service = CreateService(booking, now);
+
+        var report = service.ProcessReturn(booking.Id, booking.StartMileage, 4, 0);
+
+        report.LateMinutes.ShouldBe(expectedLateMinutes);
+        report.LateFee.ShouldBe(expectedLateFee);
+    }
+
     private static ReturnService CreateService(
         Booking booking,
         DateTimeOffset? now = null,
